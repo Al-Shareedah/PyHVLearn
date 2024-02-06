@@ -3,8 +3,8 @@ from OpenSSL import crypto
 
 class Verifier:
     def __init__(self, name):
-        self.name = name
         self.certificate = None
+        self.name = name
 
     def read_cert(self, crt_file):
         """
@@ -45,3 +45,6 @@ class Verifier:
         In this context, it simply dereferences the certificate object.
         """
         self.certificate = None
+
+    def getName(self):
+        return self.name

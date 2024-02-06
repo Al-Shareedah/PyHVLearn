@@ -1,6 +1,7 @@
 from OpenSSL import crypto
 import os
-from datetime import datetime, timedelta
+from datetime import datetime
+
 
 class CertificateTemplate:
     ID_TYPE_NONE = 0  # Common name
@@ -9,6 +10,8 @@ class CertificateTemplate:
     ID_TYPE_EMAIL = 3  # EMAIL
 
     def __init__(self, name, idType=ID_TYPE_NONE):
+        self.keyFile = None
+        self.certFile = None
         self.name = name
         self.idType = idType
         self.tempPath = os.path.join(os.getenv('TMPDIR', '/tmp'))
@@ -16,11 +19,11 @@ class CertificateTemplate:
 
     def do_setup(self):
         timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
-        certFileName = f"cert-{timestamp}.pem"
-        keyFileName = f"cert-{timestamp}.key"
+        cert_file_name = f"cert-{timestamp}.pem"
+        key_file_name = f"cert-{timestamp}.key"
 
-        self.certFile = os.path.join(self.tempPath, certFileName)
-        self.keyFile = os.path.join(self.tempPath, keyFileName)
+        self.certFile = os.path.join(self.tempPath, cert_file_name)
+        self.keyFile = os.path.join(self.tempPath, key_file_name)
 
         self.write_cert()
 
@@ -48,7 +51,7 @@ class CertificateTemplate:
         cert.get_subject().CN = cname
         cert.set_serial_number(int(datetime.now().timestamp()))
         cert.gmtime_adj_notBefore(0)
-        cert.gmtime_adj_notAfter(10*365*24*60*60)  # 10 years
+        cert.gmtime_adj_notAfter(10 * 365 * 24 * 60 * 60)  # 10 years
         cert.set_issuer(cert.get_subject())
         cert.set_pubkey(key)
         cert.sign(key, 'sha256')
@@ -59,11 +62,3 @@ class CertificateTemplate:
 
         with open(self.keyFile, "wb") as f:
             f.write(crypto.dump_privatekey(crypto.FILETYPE_PEM, key))
-
-# Example usage
-if __name__ == "__main__":
-    name = "example.com"
-    cert_template = CertificateTemplate(name, CertificateTemplate.ID_TYPE_EMAIL)
-    print(f"Certificate saved to: {cert_template.get_cert_file_name()}")
-    print(f"Key saved to: {cert_template.get_key_file_name()}")
-    print(f"The type of ID is the following: {cert_template.idType}")
