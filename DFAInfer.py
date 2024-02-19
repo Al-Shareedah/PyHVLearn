@@ -1,6 +1,6 @@
 import os
 from Utils import Utils
-
+from MembershipOracleCertname import MembershipOracleCertname
 
 class DFAInfer:
     # Static variables from DFAInfer, values assumed for demonstration
@@ -9,12 +9,10 @@ class DFAInfer:
     MIN_BATCH_SIZE = 1
     LOG_PATH = "./log"
 
-    def __init__(self):
-        self.idType = None
-        self.alphabetFile = None
-        self.nameFile = None
-        self.alphabets = None
-        self.name = None
+    def __init__(self, alphabetFile, nameFile, idType):
+        self.idType = idType
+        self.alphabetFile = alphabetFile
+        self.nameFile = nameFile
         self.idVerifier = None
         self.wpMethodDepth = DFAInfer.WP_METHOD_DEPTH
         self.numInstances = DFAInfer.NUM_INSTANCES
@@ -81,3 +79,7 @@ class DFAInfer:
         # This assumes the idVerifier has a getName() method to retrieve the verifier's name
         self.logPath = os.path.join(self.logPath, self.idVerifier.getName())
         self.makeLogPath()
+
+    def do_it(self):
+        # Setup MembershipOracle
+        self.mq_oracle = MembershipOracleCertname(self.idVerifier, self.name, self.idType)
