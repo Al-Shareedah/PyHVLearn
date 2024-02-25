@@ -77,3 +77,43 @@ out:
 
     return ret;
 }
+
+int initcert_wrapper(const char *commonname, const char *crtfile, const char *keyfile) {
+    // UTF-8 conversion logic and error handling
+    size_t cname_len = strlen(commonname) + 1;
+    char *converted_commonname = malloc(cname_len);
+    if (!converted_commonname) {
+         fprintf(stderr, "Memory allocation failed!\n");
+         return ERROR;
+    }
+    strncpy(converted_commonname, commonname, cname_len);
+
+    size_t crtfile_len = strlen(crtfile) + 1;
+    char *converted_crtfile = malloc(crtfile_len);
+    if (!converted_crtfile) {
+        fprintf(stderr, "Memory allocation failed!\n");
+        free(converted_commonname);
+        return ERROR;
+    }
+    strncpy(converted_crtfile, crtfile, crtfile_len);
+
+    size_t keyfile_len = strlen(keyfile) + 1;
+    char *converted_keyfile = malloc(keyfile_len);
+    if (!converted_keyfile) {
+        fprintf(stderr, "Memory allocation failed!\n");
+        free(converted_commonname);
+        free(converted_crtfile);
+        return ERROR;
+    }
+    strncpy(converted_keyfile, keyfile, keyfile_len);
+
+    // Call the existing initcert
+    int result = initcert(converted_commonname, converted_crtfile, converted_keyfile);
+
+    // Free the dynamically allocated buffers
+    free(converted_commonname);
+    free(converted_crtfile);
+    free(converted_keyfile);
+
+    return result;
+}

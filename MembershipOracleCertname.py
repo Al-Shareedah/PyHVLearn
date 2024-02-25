@@ -1,53 +1,67 @@
-from ctypes import CDLL, c_char_p, c_int
+import ssl
+from OpenSSL import crypto
+import os
 
-# Load the shared library
-libserverjni = CDLL('/Users/al.halshareedah/Documents/GitHub/PyHVLearn/gnutls/libserverjni.so')
+import CertificateTemplate
+from Verifier import Verifier
 
-# Define the argument and return types for the functions we'll call
-libserverjni.initcert.argtypes = [c_char_p, c_char_p, c_char_p]
-libserverjni.initcert.restype = c_int
 
-libserverjni.readcert.argtypes = [c_char_p]
-libserverjni.readcert.restype = c_int
+class MembershipOracleCertname:
+    def __init__(self, name, id_type):
 
-libserverjni.verifyname.argtypes = [c_char_p, c_int]
-libserverjni.verifyname.restype = c_int
+        self.id_type = id_type
+        self.name = name
+        self.cert_file_name = None
+        self.key_file_name = None
+        self.do_setup()
 
-libserverjni.freecert.argtypes = []
-libserverjni.freecert.restype = None
+    def do_setup(self):
+        from CertificateTemplate import CertificateTemplate
+        try:
+            cert_template = CertificateTemplate(self.name, self.id_type)
+            self.cert_file_name = cert_template.get_cert_file_name()
+            self.key_file_name = cert_template.get_key_file_name()
+        except RuntimeError as e:
+            print(f"[FAILED] {str(e)}")
+            exit(-1)
+
+    def verify_certificate(self, hostname):
+        """
+        Verify if the generated certificate matches the provided hostname.
+        """
+        # Load the certificate
+        with open(self.cert_file_name, 'rb') as cert_file:
+            cert_data = cert_file.read()
+
+        # Load the certificate using OpenSSL
+        certificate = crypto.load_certificate(crypto.FILETYPE_PEM, cert_data)
+
+        # Convert the certificate to the format required by match_hostname
+        san_items = []
+        for i in range(certificate.get_extension_count()):
+            ext = certificate.get_extension(i)
+            if 'subjectAltName' in str(ext.get_short_name()):
+                # Decode the extension's data
+                ext_data = str(ext)
+                # Split the extension's data by comma and then by colon
+                for alt_name in ext_data.split(", "):
+                    parts = alt_name.split(":")
+                    if len(parts) == 2:
+                        san_items.append((parts[0], parts[1]))
+
+        cert_dict['subjectAltName'] = san_items
+
+        # Perform the hostname verification
+        try:
+            ssl.match_hostname(cert_dict, hostname)
+            return True
+        except ssl.CertificateError as e:
+            print(f"Certificate verification failed: {str(e)}")
+            return False
 
 # Example usage
-def main():
-    common_name = b"*.a.a"
-    crt_file = b"/tmp/example_com.crt"
-    key_file = b"/tmp/example_com.key"
-
-    # Generate a certificate
-    if libserverjni.initcert(common_name, crt_file, key_file) == 0:
-        print("Certificate generated successfully.")
-    else:
-        print("Failed to generate certificate.")
-        return
-
-    # Read the generated certificate
-    if libserverjni.readcert(crt_file) == 0:
-        print("Certificate read successfully.")
-    else:
-        print("Failed to read certificate.")
-        return
-
-        # Verify the hostname against the loaded certificate
-    ID_DNS = 0  # Assuming ID_DNS = 1 based on your setup
-    verification_result = libserverjni.verifyname(common_name, ID_DNS)
-    if verification_result == 1:
-        print("Hostname verification: Accepted")
-    elif verification_result == 0:
-        print("Hostname verification: Rejected")
-    else:
-        print("Error during hostname verification.")
-
-    # Clean up and free the certificate
-    libserverjni.freecert()
-
 if __name__ == "__main__":
-    main()
+
+    oracle = MembershipOracleCertname("a.a", 0)
+    hostname_to_verify = "a.a"
+    oracle.verify_certificate(hostname_to_verify)

@@ -1,77 +1,67 @@
-from OpenSSL import crypto
+from ctypes import CDLL, c_char_p, c_int
 import os
-from datetime import datetime
-
+import time
+import tempfile
 
 class CertificateTemplate:
     ID_TYPE_NONE = 0  # Common name
-    ID_TYPE_DNS = 1  # DNS
+    ID_TYPE_DNS = 1   # DNS
     ID_TYPE_IPADDR = 2  # IP ADDRESS
     ID_TYPE_EMAIL = 3  # EMAIL
 
-    def __init__(self, name, idType=ID_TYPE_NONE):
-        self.keyFile = None
-        self.certFile = None
-        self.name = name
-        self.idType = idType
-        self.tempPath = os.path.join(os.getenv('TMPDIR', '/tmp'))
+    def __init__(self, name, id_type):
+        self.id_type = id_type
+        # Adjust the name based on the id_type
+        self.name = self._adjust_name_based_on_id_type(name).encode('utf-8')
+        self.lib = CDLL('/Users/al.halshareedah/Documents/GitHub/PyHVLearn/gnutls/libserverjni.so')
+        self._setup_ctypes()
+        self.cert_file = None
+        self.key_file = None
         self.do_setup()
 
+    def _adjust_name_based_on_id_type(self, name):
+        if self.id_type == self.ID_TYPE_DNS:
+            cname = "DNS:" + name
+        elif self.id_type == self.ID_TYPE_IPADDR:
+            cname = "IP:" + name
+        elif self.id_type == self.ID_TYPE_EMAIL:
+            cname = "email:" + name
+        else:
+            cname = name  # No prefix for ID_TYPE_NONE
+        return cname
+
+    def _setup_ctypes(self):
+        # Setup argument and result types for ctypes calls
+        self.lib.initcert.argtypes = [c_char_p, c_char_p, c_char_p]
+        self.lib.initcert.restype = c_int
+
     def do_setup(self):
-        timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
-        cert_file_name = f"cert-{timestamp}.pem"
-        key_file_name = f"cert-{timestamp}.key"
+        # Generate filenames based on the current timestamp
+        temp_path = tempfile.gettempdir()
+        id_file = str(int(time.time()))
+        cert_file_name = "cert-" + id_file + ".pem"
+        key_file_name = "key-" + id_file + ".key"
 
-        self.certFile = os.path.join(self.tempPath, cert_file_name)
-        self.keyFile = os.path.join(self.tempPath, key_file_name)
+        self.cert_file = os.path.join(temp_path, cert_file_name)
+        self.key_file = os.path.join(temp_path, key_file_name)
 
-        self.write_cert()
+        # Generate the certificate
+        result = self.lib.initcert(self.name, self.cert_file.encode('utf-8'), self.key_file.encode('utf-8'))
+        if result != 0:
+            raise Exception("Failed to generate certificate")
 
     def get_cert_file_name(self):
-        return self.certFile
+        return self.cert_file
 
     def get_key_file_name(self):
-        return self.keyFile
+        return self.key_file
 
-    def write_cert(self):
-        cname = self.name
-        # Generate certificate and key
-        key = crypto.PKey()
-        key.generate_key(crypto.TYPE_RSA, 2048)
+# Example usage
+if __name__ == "__main__":
+    certificate_template_dns = CertificateTemplate("example.com", CertificateTemplate.ID_TYPE_DNS)
+    print("DNS Certificate file:", certificate_template_dns.get_cert_file_name())
+    print("DNS Key file:", certificate_template_dns.get_key_file_name())
 
-        cert = crypto.X509()
-        # CommonName (CN) is set here; ensure it matches the hostname you will verify.
-        cert.get_subject().CN = cname
-        cert.set_serial_number(int(datetime.now().timestamp()))
-        cert.gmtime_adj_notBefore(0)
-        cert.gmtime_adj_notAfter(10 * 365 * 24 * 60 * 60)  # 10 years
-        cert.set_issuer(cert.get_subject())
-        cert.set_pubkey(key)
-
-        # Add subjectAltName extension
-        san_list = []
-        if self.idType == self.ID_TYPE_DNS:
-            san_list.append("DNS:" + self.name)
-        elif self.idType == self.ID_TYPE_IPADDR:
-            san_list.append("IP:" + self.name)
-        elif self.idType == self.ID_TYPE_EMAIL:
-            san_list.append("email:" + self.name)
-        else:
-            # Fallback to DNS if no specific type is found, adjust as necessary.
-            san_list.append("DNS:" + self.name)
-
-        # Convert the SAN list to a comma-separated string.
-        san_str = ", ".join(san_list)
-        # Creating an X509 extension for subjectAltName
-        san_extension = crypto.X509Extension(b"subjectAltName", False, san_str.encode('utf-8'))
-        cert.add_extensions([san_extension])
-
-        cert.sign(key, 'sha256')
-
-        # Write to files
-        with open(self.certFile, "wb") as f:
-            f.write(crypto.dump_certificate(crypto.FILETYPE_PEM, cert))
-
-        with open(self.keyFile, "wb") as f:
-            f.write(crypto.dump_privatekey(crypto.FILETYPE_PEM, key))
-
+    certificate_template_email = CertificateTemplate("user@example.com", CertificateTemplate.ID_TYPE_EMAIL)
+    print("Email Certificate file:", certificate_template_email.get_cert_file_name())
+    print("Email Key file:", certificate_template_email.get_key_file_name())

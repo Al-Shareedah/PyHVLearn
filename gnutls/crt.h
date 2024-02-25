@@ -388,11 +388,15 @@ int gnutls_read_crt(const char *name, gnutls_x509_crt_t *crt)
 
     data.data = (void *) read_binary_file(name, &size);
     data.size = size;
-    if (gnutls_x509_crt_import(*crt, &data, GNUTLS_X509_FMT_PEM) < 0) {
-        fprintf(stderr, "[FAILED] gnutls_x509_crt_import().\n");
-        gnutls_x509_crt_deinit(*crt);
-        return ret;
+if (gnutls_x509_crt_import(*crt, &data, GNUTLS_X509_FMT_PEM) < 0) {
+    FILE *error_log = fopen("gnutls_errors.txt", "a"); // Open in append mode
+    if (error_log) {                                 // Check if the file opened
+        fprintf(error_log, "[FAILED] gnutls_x509_crt_import(), Error: %s\n", gnutls_strerror(ret));
+        fclose(error_log);
     }
+    gnutls_x509_crt_deinit(*crt);
+    return ret;
+}
 
     ret = 0;
     free(data.data);
