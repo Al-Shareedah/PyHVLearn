@@ -58,10 +58,9 @@ class CertificateTemplate:
 
 # Example usage
 if __name__ == "__main__":
-    certificate_template_dns = CertificateTemplate("example.com", CertificateTemplate.ID_TYPE_DNS)
-    print("DNS Certificate file:", certificate_template_dns.get_cert_file_name())
-    print("DNS Key file:", certificate_template_dns.get_key_file_name())
+    certificate_template_non = CertificateTemplate("*.a.a", CertificateTemplate.ID_TYPE_NONE)
+    print("DNS Certificate file:", certificate_template_non.get_cert_file_name())
+    print("DNS Key file:", certificate_template_non.get_key_file_name())
 
-    certificate_template_email = CertificateTemplate("user@example.com", CertificateTemplate.ID_TYPE_EMAIL)
-    print("Email Certificate file:", certificate_template_email.get_cert_file_name())
-    print("Email Key file:", certificate_template_email.get_key_file_name())
+
+

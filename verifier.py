@@ -23,9 +23,9 @@ lib.verifyname.argtypes = [c_char_p, c_int]
 lib.verifyname.restype = c_int
 
 
-class JNIVerifier:
-    def __init__(self, name):
-        self.name = name
+class Verifier:
+    def __init__(self, id_type):
+        self.id_type = id_type
 
     def read_cert(self, crt_file, key_file):
         # Ignore key_file in this method
@@ -43,21 +43,21 @@ class JNIVerifier:
 def main():
     # Example usage of CertificateTemplate to generate a certificate
     print("Generating certificate...")
-    cert_template = CertificateTemplate("example.com", CertificateTemplate.ID_TYPE_DNS)
+    cert_template = CertificateTemplate("*.a.a", CertificateTemplate.ID_TYPE_DNS)  # This part remains unchanged as it's just an example of generating a certificate
     print(f"Certificate generated at: {cert_template.cert_file}")
     print(f"Key generated at: {cert_template.key_file}")
 
-    # Example usage of JNIVerifier to read and verify a certificate
-    verifier = JNIVerifier("exampleVerifier")
+    # Example usage of Verifier to read and verify a certificate
+    verifier = Verifier(0)  # Assuming 0 represents the equivalent of ID_NONE in your shared library
 
     try:
         print("Reading certificate...")
-        verifier.read_cert(cert_template.cert_file, cert_template.key_file)
+        verifier.read_cert(cert_template.cert_file, cert_template.key_file)  # You still need a valid certificate file path
         print("Certificate read successfully.")
 
-        # Suppose we want to verify the name "example.com" against the certificate
-        print("Verifying certificate...")
-        verification_result = verifier.verify("example.com", CertificateTemplate.ID_TYPE_DNS)
+        # Now, verify the hostname ".a.A" against the certificate
+        print("Verifying certificate for hostname '.a.A'...")
+        verification_result = verifier.verify(".a.A", 0)  # Assuming 0 is the correct id_type for your use case
 
         if verification_result == 1:
             print("Verification successful.")
